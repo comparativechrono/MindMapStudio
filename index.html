@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Mind Map Studio</title>
+
+<style>
+  /* Fully offline — no external fonts needed */
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f1eb;
+    --panel: #ffffff;
+    --text: #2c2825;
+    --text-muted: #8a8480;
+    --accent: #c45d3e;
+    --accent-hover: #a84d32;
+    --border: #e0dbd5;
+    --card-bg: #ffffff;
+    --card-shadow: 0 2px 8px rgba(44,40,37,0.08);
+    --card-shadow-drag: 0 8px 24px rgba(44,40,37,0.18);
+    --canvas-dot: #d4d0ca;
+  }
+
+  body {
+    font-family: -apple-system, 'Segoe UI', system-ui, Helvetica, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    touch-action: none;
+  }
+
+  /* ── Side Panel ── */
+  .side-panel {
+    width: 300px;
+    min-width: 300px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    z-index: 200;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .panel-header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-header h1 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 26px;
+    font-weight: 400;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .panel-header p {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+
+  .panel-close-btn {
+    display: none;
+    width: 36px; height: 36px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 20px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .panel-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-section h3 {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+
+  textarea {
+    width: 100%;
+    height: 120px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: -apple-system, 'Segoe UI', system-ui, Helvetica, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    resize: none;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.2s;
+    touch-action: auto;
+  }
+
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--text-muted); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 11px 16px;
+    border: none;
+    border-radius: 6px;
+    font-family: -apple-system, 'Segoe UI', system-ui, Helvetica, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    width: 100%;
+    margin-top: 10px;
+  }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-primary:active { transform: scale(0.98); }
+
+  .btn-secondary {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    width: 100%;
+    margin-top: 8px;
+  }
+  .btn-secondary:hover { background: var(--border); }
+
+  .color-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+
+  .color-swatch {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2.5px solid transparent;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .color-swatch:hover { transform: scale(1.15); }
+  .color-swatch.active { border-color: var(--text); }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    display: flex;
+    gap: 4px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .tool-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: -apple-system, 'Segoe UI', system-ui, Helvetica, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    background: #fff;
+    color: var(--text);
+    transition: all 0.15s;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tool-btn:hover { background: var(--bg); }
+  .tool-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .tool-btn svg { width: 14px; height: 14px; }
+
+  /* ── Label Size Control ── */
+  .size-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .size-control span {
+    font-size: 13px;
+    color: var(--text);
+    min-width: 38px;
+    text-align: center;
+    font-weight: 500;
+  }
+  .size-btn {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--text);
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.15s;
+  }
+  .size-btn:hover { background: var(--bg); }
+  .size-btn:active { transform: scale(0.95); }
+
+  /* ── Canvas ── */
+  .canvas-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--bg);
+    background-image: radial-gradient(circle, var(--canvas-dot) 1px, transparent 1px);
+    background-size: 24px 24px;
+    touch-action: none;
+  }
+
+  #canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4000px;
+    height: 4000px;
+    transform-origin: 0 0;
+  }
+
+  #lines-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  #lines-layer line, #lines-layer .conn-line {
+    pointer-events: stroke;
+    cursor: pointer;
+  }
+
+  /* ── Cards ── */
+  .card {
+    position: absolute;
+    background: var(--card-bg);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    box-shadow: var(--card-shadow);
+    z-index: 10;
+    min-width: 80px;
+    max-width: 260px;
+    transition: box-shadow 0.2s, border-color 0.2s;
+    font-size: 14px;
+    line-height: 1.45;
+    touch-action: none;
+  }
+
+  .card:hover { border-color: var(--accent); }
+  .card.dragging {
+    cursor: grabbing;
+    box-shadow: var(--card-shadow-drag);
+    z-index: 999;
+  }
+  .card.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(196,93,62,0.25), var(--card-shadow);
+  }
+
+  .card .delete-btn {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .card:hover .delete-btn,
+  .card.selected .delete-btn { display: flex; }
+
+  /* ── Labels ── */
+  .label {
+    position: absolute;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    z-index: 10;
+    font-size: 16px;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 4px 8px;
+    border-radius: 4px;
+    min-width: 20px;
+    transition: background 0.15s;
+    touch-action: none;
+  }
+  .label:hover { background: rgba(0,0,0,0.04); }
+  .label.dragging { cursor: grabbing; z-index: 999; }
+  .label.selected {
+    outline: 1.5px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .label .delete-btn {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-size: 15px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .label:hover .delete-btn,
+  .label.selected .delete-btn { display: flex; }
+
+  /* ── Connection endpoints ── */
+  .conn-endpoint {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border: 2px solid #fff;
+    border-radius: 50%;
+    z-index: 20;
+    cursor: crosshair;
+    display: none;
+    transform: translate(-50%, -50%);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .card:hover .conn-endpoint,
+  .card.selected .conn-endpoint { display: block; }
+
+  .temp-line { pointer-events: none; }
+
+  /* ── Status bar ── */
+  .status-bar {
+    padding: 10px 20px;
+    font-size: 11px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    margin-top: auto;
+    flex-shrink: 0;
+  }
+
+  /* ── Line style ── */
+  .line-thickness-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .thickness-btn {
+    width: 36px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    background: #fff;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .thickness-btn:hover { background: var(--bg); }
+  .thickness-btn.active { border-color: var(--accent); background: rgba(196,93,62,0.08); }
+
+  .card-text { outline: none; min-height: 1em; cursor: grab; }
+  .card-text[contenteditable="true"] { cursor: text; background: rgba(196,93,62,0.04); border-radius: 4px; }
+  .label-text { outline: none; min-height: 1em; cursor: grab; }
+  .label-text[contenteditable="true"] { cursor: text; background: rgba(196,93,62,0.06); border-radius: 3px; }
+
+  /* ── Mobile FAB ── */
+  .fab-open {
+    display: none;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+    color: var(--text);
+    font-size: 22px;
+    cursor: pointer;
+    z-index: 150;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── Mobile toolbar strip ── */
+  .mobile-toolbar {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    padding: 8px 12px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 150;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .mobile-toolbar .tool-btn {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+
+  /* ── Overlay ── */
+  .panel-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 190;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .side-panel {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      width: 85vw;
+      max-width: 320px;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+      box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+    }
+    .side-panel.open { transform: translateX(0); }
+    .panel-overlay.open { display: block; }
+    .panel-close-btn { display: flex; }
+    .fab-open { display: flex; }
+    .mobile-toolbar { display: flex; }
+    .side-panel .toolbar { display: none; }
+    .card { max-width: 200px; }
+  }
+  /* ── Splash Screen ── */
+  .splash-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(44,40,37,0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .splash-overlay.hidden { display: none; }
+
+  .splash-card {
+    background: var(--panel);
+    border-radius: 16px;
+    max-width: 520px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    padding: 36px 32px 28px;
+  }
+
+  .splash-card h1 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 28px;
+    font-weight: 400;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .splash-card .splash-subtitle {
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+  }
+
+  .splash-card .splash-privacy {
+    background: #f0ece5;
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .splash-card .splash-privacy strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--accent);
+  }
+
+  .splash-card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 18px 0 10px;
+  }
+
+  .splash-card .splash-steps {
+    list-style: none;
+    padding: 0;
+  }
+  .splash-card .splash-steps li {
+    position: relative;
+    padding: 6px 0 6px 32px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: #4a4541;
+  }
+  .splash-card .splash-steps li .step-num {
+    position: absolute;
+    left: 0;
+    top: 6px;
+    width: 22px;
+    height: 22px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .splash-card .splash-tip {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  .splash-card .btn-start {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    margin-top: 20px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .splash-card .btn-start:hover { background: var(--accent-hover); }
+  .splash-card .btn-start:active { transform: scale(0.98); }
+
+  @media (max-width: 500px) {
+    .splash-card { padding: 28px 22px 22px; }
+    .splash-card h1 { font-size: 24px; }
+  }
+
+  /* ── Float mode indicator ── */
+  .float-banner {
+    display: none;
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent);
+    color: #fff;
+    padding: 10px 22px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 160;
+    box-shadow: 0 4px 16px rgba(196,93,62,0.35);
+    text-align: center;
+    line-height: 1.4;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+  }
+  .float-banner.visible { display: block; }
+
+  .card.frozen {
+    outline: 2.5px solid var(--accent);
+    outline-offset: 2px;
+    opacity: 1 !important;
+  }
+  .card.floating {
+    transition: none !important;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- ── Splash Screen ── -->
+<div class="splash-overlay" id="splashOverlay">
+  <div class="splash-card">
+    <h1>Mind Map Studio</h1>
+    <div class="splash-subtitle">Fully Offline &bull; No Data Leaves This Device</div>
+
+    <div class="splash-privacy">
+      <strong>Designed for privacy-sensitive settings</strong>
+      This tool runs entirely in your browser with no internet connection required. No data is transmitted, stored remotely, or accessible to anyone else. It is suitable for environments where putting information into online tools would be inappropriate &mdash; including counselling, clinical, therapeutic, custodial, and other confidential settings.
+    </div>
+
+    <h3>How It Works</h3>
+    <ol class="splash-steps">
+      <li><span class="step-num">1</span>Type phrases in the side panel (one per line) and tap <strong>Add to Canvas</strong>. Each phrase becomes a movable card.</li>
+      <li><span class="step-num">2</span><strong>Drag</strong> cards anywhere to arrange them. Double-tap a card to edit its text.</li>
+      <li><span class="step-num">3</span>Switch to <strong>Connect</strong> mode and tap two cards to draw a line between them. Tap a line to remove it.</li>
+      <li><span class="step-num">4</span>Switch to <strong>Label</strong> mode and tap the canvas to add free text annotations.</li>
+      <li><span class="step-num">5</span>Use <strong>Shuffle</strong> to randomly rearrange cards, or <strong>Float</strong> to set them drifting &mdash; tap a card to freeze it in place as ideas emerge.</li>
+      <li><span class="step-num">6</span>When you&rsquo;re happy, tap <strong>Save as Image</strong> to download a PNG.</li>
+    </ol>
+
+    <div class="splash-tip">
+      <strong>Tip:</strong> You can change card colours, line colours, line thickness, and label text size from the side panel. On mobile, tap the menu icon (top-left) to open the panel, and use the toolbar at the bottom to switch tools.
+    </div>
+
+    <button class="btn-start" onclick="dismissSplash()">Get Started</button>
+  </div>
+</div>
+
+<div class="panel-overlay" id="panelOverlay" onclick="closePanel()"></div>
+
+<button class="fab-open" id="fabOpen" onclick="openPanel()">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+
+<div class="side-panel" id="sidePanel">
+  <div class="panel-header">
+    <div>
+      <h1>Mind Map Studio</h1>
+      <p>Add phrases, connect ideas, arrange freely.</p>
+    </div>
+    <button class="panel-close-btn" onclick="closePanel()">×</button>
+  </div>
+
+  <div class="panel-section">
+    <h3>Phrases</h3>
+    <textarea id="phraseInput" placeholder="Type one phrase per line&#10;&#10;e.g.&#10;Main Idea&#10;Supporting Point&#10;Another Thought"></textarea>
+    <button class="btn btn-primary" onclick="addPhrases(); closePanel();">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add to Canvas
+    </button>
+  </div>
+
+  <div class="toolbar">
+    <button class="tool-btn active" id="tool-move" onclick="setTool('move')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3"/><path d="M9 5l3-3 3 3"/><path d="M15 19l-3 3-3-3"/><path d="M19 9l3 3-3 3"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+      Move
+    </button>
+    <button class="tool-btn" id="tool-connect" onclick="setTool('connect')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/></svg>
+      Connect
+    </button>
+    <button class="tool-btn" id="tool-label" onclick="setTool('label')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5l4 4L7 21l-4 1 1-4L16.5 3.5z"/></svg>
+      Label
+    </button>
+  </div>
+
+  <div class="panel-section">
+    <h3>Card Color</h3>
+    <div class="color-row" id="colorPalette"></div>
+  </div>
+
+  <div class="panel-section">
+    <h3>Label Size</h3>
+    <div class="size-control">
+      <button class="size-btn" onclick="changeLabelSize(-2)">−</button>
+      <span id="labelSizeDisplay">16px</span>
+      <button class="size-btn" onclick="changeLabelSize(2)">+</button>
+    </div>
+    <p style="font-size:11px;color:var(--text-muted);margin-top:8px;">Applies to new labels and selected label</p>
+  </div>
+
+  <div class="panel-section">
+    <h3>Line Style</h3>
+    <div class="color-row" id="lineColorPalette"></div>
+    <div class="line-thickness-row" id="lineThickness"></div>
+  </div>
+
+  <div class="panel-section" style="display:flex; flex-direction:column; gap:6px;">
+    <h3 style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px;">Explore</h3>
+    <button class="btn btn-secondary" onclick="shuffleCards()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+      Shuffle Cards
+    </button>
+    <button class="btn btn-secondary" id="floatBtn" onclick="toggleFloat()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.93 4.93a10 10 0 0114.14 0"/><path d="M7.76 7.76a6 6 0 018.48 0"/><path d="M10.59 10.59a2 2 0 012.83 0"/><circle cx="12" cy="18" r="1"/></svg>
+      Float Cards
+    </button>
+  </div>
+
+  <div class="panel-section" style="display:flex; flex-direction:column; gap:6px;">
+    <button class="btn btn-secondary" onclick="clearAll()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      Clear All
+    </button>
+    <button class="btn btn-primary" onclick="saveAsImage()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Save as Image
+    </button>
+    <button class="btn btn-secondary" onclick="document.getElementById('splashOverlay').classList.remove('hidden')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Help &amp; Info
+    </button>
+  </div>
+
+  <div class="status-bar" id="statusBar">Ready — add phrases to start</div>
+</div>
+
+<div class="mobile-toolbar" id="mobileToolbar">
+  <button class="tool-btn active" id="m-tool-move" onclick="setTool('move')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3"/><path d="M9 5l3-3 3 3"/><path d="M15 19l-3 3-3-3"/><path d="M19 9l3 3-3 3"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+    Move
+  </button>
+  <button class="tool-btn" id="m-tool-connect" onclick="setTool('connect')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/></svg>
+    Connect
+  </button>
+  <button class="tool-btn" id="m-tool-label" onclick="setTool('label')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5l4 4L7 21l-4 1 1-4L16.5 3.5z"/></svg>
+    Label
+  </button>
+</div>
+
+<div class="float-banner" id="floatBanner" onclick="stopFloat()">Float mode — tap cards to freeze them &bull; Tap here to stop</div>
+
+<div class="canvas-area" id="canvasArea">
+  <div id="canvas">
+    <svg id="lines-layer"></svg>
+  </div>
+</div>
+
+<script>
+// ── Unified pointer helper ──
+function getPointerPos(e) {
+  if (e.touches && e.touches.length > 0)
+    return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+  if (e.changedTouches && e.changedTouches.length > 0)
+    return { clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY };
+  return { clientX: e.clientX, clientY: e.clientY };
+}
+
+// ── State ──
+let currentTool = 'move';
+let cardIdCounter = 0;
+let labelIdCounter = 0;
+let lineIdCounter = 0;
+let selectedCard = null;
+let connectSource = null;
+let dragState = null;
+let currentLabelSize = 16;
+
+const cardColors = ['#ffffff','#fef3e2','#fde8e8','#e8f4e8','#e3edf8','#f0e8f5','#f5f0e0','#e8f0f0'];
+const lineColors = ['#2c2825','#c45d3e','#3d7abf','#5a9e5a','#b8860b','#8b5eb0','#888888'];
+const lineThicknesses = [1.5, 2.5, 4];
+
+let currentCardColor = cardColors[0];
+let currentLineColor = lineColors[0];
+let currentLineThickness = lineThicknesses[0];
+const connections = [];
+
+// ── Mobile panel ──
+function openPanel() {
+  document.getElementById('sidePanel').classList.add('open');
+  document.getElementById('panelOverlay').classList.add('open');
+}
+function closePanel() {
+  document.getElementById('sidePanel').classList.remove('open');
+  document.getElementById('panelOverlay').classList.remove('open');
+}
+
+// ── Label Size ──
+function changeLabelSize(delta) {
+  currentLabelSize = Math.max(10, Math.min(48, currentLabelSize + delta));
+  document.getElementById('labelSizeDisplay').textContent = currentLabelSize + 'px';
+  const sel = document.querySelector('.label.selected');
+  if (sel) sel.style.fontSize = currentLabelSize + 'px';
+}
+
+// ── Init Palettes ──
+function initPalettes() {
+  const cp = document.getElementById('colorPalette');
+  cardColors.forEach((c, i) => {
+    const s = document.createElement('div');
+    s.className = 'color-swatch' + (i === 0 ? ' active' : '');
+    s.style.background = c;
+    if (c === '#ffffff') s.style.border = '2.5px solid #e0dbd5';
+    if (i === 0) s.style.borderColor = 'var(--text)';
+    s.onclick = () => {
+      cp.querySelectorAll('.color-swatch').forEach(x => {
+        x.classList.remove('active');
+        x.style.borderColor = (x.style.background === '#ffffff' || x.style.background === 'rgb(255, 255, 255)') ? '#e0dbd5' : 'transparent';
+      });
+      s.classList.add('active');
+      s.style.borderColor = 'var(--text)';
+      currentCardColor = c;
+      if (selectedCard && selectedCard.classList.contains('card')) selectedCard.style.background = c;
+    };
+    cp.appendChild(s);
+  });
+
+  const lp = document.getElementById('lineColorPalette');
+  lineColors.forEach((c, i) => {
+    const s = document.createElement('div');
+    s.className = 'color-swatch' + (i === 0 ? ' active' : '');
+    s.style.background = c;
+    if (i === 0) s.style.borderColor = 'var(--text)';
+    s.onclick = () => {
+      lp.querySelectorAll('.color-swatch').forEach(x => { x.classList.remove('active'); x.style.borderColor = 'transparent'; });
+      s.classList.add('active');
+      s.style.borderColor = 'var(--text)';
+      currentLineColor = c;
+    };
+    lp.appendChild(s);
+  });
+
+  const lt = document.getElementById('lineThickness');
+  lineThicknesses.forEach((t, i) => {
+    const b = document.createElement('div');
+    b.className = 'thickness-btn' + (i === 0 ? ' active' : '');
+    const line = document.createElement('div');
+    line.style.cssText = `width:18px;height:${t}px;background:var(--text);border-radius:${t}px;`;
+    b.appendChild(line);
+    b.onclick = () => {
+      lt.querySelectorAll('.thickness-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      currentLineThickness = t;
+    };
+    lt.appendChild(b);
+  });
+}
+
+// ── Tools ──
+function setTool(tool) {
+  currentTool = tool;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  ['tool-','m-tool-'].forEach(prefix => {
+    const btn = document.getElementById(prefix + tool);
+    if (btn) btn.classList.add('active');
+  });
+  connectSource = null;
+  removeTempLine();
+  updateStatus();
+}
+
+function updateStatus() {
+  const s = document.getElementById('statusBar');
+  const map = {
+    move: 'Move — drag cards to rearrange, double-tap to edit text',
+    connect: 'Connect — tap a card, then tap another to draw a line',
+    label: 'Label — tap on the canvas to add a text label'
+  };
+  s.textContent = map[currentTool] || 'Ready';
+}
+
+// ── Add Phrases ──
+function addPhrases() {
+  const input = document.getElementById('phraseInput');
+  const lines = input.value.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return;
+
+  const area = document.getElementById('canvasArea');
+  const areaRect = area.getBoundingClientRect();
+  const startX = 60;
+  const startY = 80;
+  const colWidth = Math.min(240, areaRect.width * 0.4);
+  const cols = Math.max(1, Math.floor((areaRect.width - 40) / colWidth));
+
+  lines.forEach((text, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = startX + col * colWidth + (Math.random() * 30 - 15);
+    const y = startY + row * 80 + (Math.random() * 20 - 10);
+    createCard(text, x, y);
+  });
+
+  input.value = '';
+  document.getElementById('statusBar').textContent = `Added ${lines.length} card${lines.length > 1 ? 's' : ''}`;
+}
+
+// ── Edit mode helpers (double-tap to edit text) ──
+function enterEditMode(textEl) {
+  exitAllEditModes();
+  textEl.contentEditable = 'true';
+  textEl.style.touchAction = 'auto';
+  textEl.focus();
+  // Select all text
+  const range = document.createRange();
+  range.selectNodeContents(textEl);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  const parent = textEl.closest('.card') || textEl.closest('.label');
+  if (parent) parent.style.cursor = 'text';
+}
+
+function exitAllEditModes() {
+  document.querySelectorAll('.card-text, .label-text').forEach(el => {
+    if (el.contentEditable === 'true') {
+      el.contentEditable = 'false';
+      el.style.touchAction = '';
+      const parent = el.closest('.card') || el.closest('.label');
+      if (parent) parent.style.cursor = 'grab';
+    }
+  });
+}
+
+// ── Create Card ──
+function createCard(text, x, y) {
+  const id = 'card-' + (++cardIdCounter);
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.id = id;
+  card.style.left = x + 'px';
+  card.style.top = y + 'px';
+  card.style.background = currentCardColor;
+
+  const textEl = document.createElement('div');
+  textEl.className = 'card-text';
+  textEl.contentEditable = 'false';
+  textEl.textContent = text;
+
+  // Double-click or double-tap to enter edit mode
+  textEl.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    enterEditMode(textEl);
+  });
+  // Track touch double-tap
+  let lastTapTime = 0;
+  textEl.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - lastTapTime < 350) {
+      e.preventDefault();
+      e.stopPropagation();
+      enterEditMode(textEl);
+      lastTapTime = 0;
+    } else {
+      lastTapTime = now;
+    }
+  });
+  // When editing, stop mouse events from triggering drag
+  textEl.addEventListener('mousedown', (e) => {
+    if (textEl.contentEditable === 'true') e.stopPropagation();
+  });
+  textEl.addEventListener('touchstart', (e) => {
+    if (textEl.contentEditable === 'true') e.stopPropagation();
+  }, { passive: true });
+  textEl.addEventListener('blur', () => {
+    textEl.contentEditable = 'false';
+    card.style.cursor = 'grab';
+  });
+
+  const del = document.createElement('button');
+  del.className = 'delete-btn';
+  del.innerHTML = '×';
+  const doDelete = (e) => { e.preventDefault(); e.stopPropagation(); removeCard(id); };
+  del.addEventListener('click', doDelete);
+  del.addEventListener('touchend', doDelete);
+
+  // Connection endpoints (larger for touch)
+  ['top','right','bottom','left'].forEach(pos => {
+    const ep = document.createElement('div');
+    ep.className = 'conn-endpoint';
+    const positions = {
+      top: 'top:0;left:50%;transform:translate(-50%,-50%)',
+      right: 'top:50%;right:0;transform:translate(50%,-50%)',
+      bottom: 'bottom:0;left:50%;transform:translate(-50%,50%)',
+      left: 'top:50%;left:0;transform:translate(-50%,-50%)'
+    };
+    ep.style.cssText = positions[pos];
+    const epHandler = (e) => {
+      e.stopPropagation();
+      if (e.cancelable) e.preventDefault();
+      if (currentTool === 'connect') startConnect(id, e);
+    };
+    ep.addEventListener('mousedown', epHandler);
+    ep.addEventListener('touchstart', epHandler, { passive: false });
+    card.appendChild(ep);
+  });
+
+  card.appendChild(textEl);
+  card.appendChild(del);
+
+  const onDown = (e) => {
+    if (e.target.classList.contains('conn-endpoint')) return;
+    if (e.target.classList.contains('delete-btn')) return;
+    // If text is in edit mode, let it handle events
+    if (e.target.contentEditable === 'true') return;
+    if (e.cancelable) e.preventDefault();
+
+    // Float mode: freeze the card on tap
+    if (floatActive && !frozenCards.has(id)) {
+      freezeCard(id);
+      return;
+    }
+
+    // Blur any active editor
+    exitAllEditModes();
+
+    if (currentTool === 'connect') {
+      startConnect(id, e);
+      return;
+    }
+    selectCard(card);
+    startDrag(card, e);
+  };
+  card.addEventListener('mousedown', onDown);
+  card.addEventListener('touchstart', onDown, { passive: false });
+
+  document.getElementById('canvas').appendChild(card);
+  return card;
+}
+
+function removeCard(id) {
+  const card = document.getElementById(id);
+  if (!card) return;
+  for (let i = connections.length - 1; i >= 0; i--) {
+    if (connections[i].fromId === id || connections[i].toId === id) {
+      connections[i].el.remove();
+      connections[i].hitEl.remove();
+      connections.splice(i, 1);
+    }
+  }
+  if (selectedCard === card) selectedCard = null;
+  card.remove();
+}
+
+function selectCard(card) {
+  document.querySelectorAll('.card.selected, .label.selected').forEach(c => c.classList.remove('selected'));
+  selectedCard = card;
+  card.classList.add('selected');
+}
+
+// ── Drag (mouse + touch) ──
+function startDrag(el, e) {
+  const pos = getPointerPos(e);
+  dragState = {
+    el,
+    startX: pos.clientX,
+    startY: pos.clientY,
+    origLeft: parseFloat(el.style.left),
+    origTop: parseFloat(el.style.top)
+  };
+  el.classList.add('dragging');
+}
+
+function onPointerMove(e) {
+  if (!dragState) return;
+  if (e.cancelable) e.preventDefault();
+  const pos = getPointerPos(e);
+  const dx = pos.clientX - dragState.startX;
+  const dy = pos.clientY - dragState.startY;
+  dragState.el.style.left = (dragState.origLeft + dx) + 'px';
+  dragState.el.style.top = (dragState.origTop + dy) + 'px';
+  updateConnections();
+}
+
+function onPointerUp() {
+  if (dragState) {
+    dragState.el.classList.remove('dragging');
+    dragState = null;
+  }
+}
+
+document.addEventListener('mousemove', onPointerMove);
+document.addEventListener('mouseup', onPointerUp);
+document.addEventListener('touchmove', onPointerMove, { passive: false });
+document.addEventListener('touchend', onPointerUp);
+document.addEventListener('touchcancel', onPointerUp);
+
+// ── Canvas tap ──
+function onCanvasTap(e) {
+  const t = e.target;
+  if (t.id !== 'canvasArea' && t.id !== 'canvas' && t.id !== 'lines-layer') return;
+  if (e.cancelable) e.preventDefault();
+
+  exitAllEditModes();
+
+  if (currentTool === 'label') {
+    const pos = getPointerPos(e);
+    const canvas = document.getElementById('canvas');
+    const r = canvas.getBoundingClientRect();
+    createLabel(pos.clientX - r.left, pos.clientY - r.top);
+    return;
+  }
+
+  document.querySelectorAll('.card.selected, .label.selected').forEach(c => c.classList.remove('selected'));
+  selectedCard = null;
+  if (currentTool === 'connect') {
+    connectSource = null;
+    removeTempLine();
+  }
+}
+
+document.getElementById('canvasArea').addEventListener('mousedown', onCanvasTap);
+document.getElementById('canvasArea').addEventListener('touchstart', onCanvasTap, { passive: false });
+
+// ── Connections ──
+function startConnect(cardId, e) {
+  if (e.stopPropagation) e.stopPropagation();
+  if (!connectSource) {
+    connectSource = cardId;
+    document.getElementById(cardId).classList.add('selected');
+    document.getElementById('statusBar').textContent = 'Tap another card to complete the connection';
+  } else if (connectSource !== cardId) {
+    addConnection(connectSource, cardId);
+    document.querySelectorAll('.card.selected').forEach(c => c.classList.remove('selected'));
+    connectSource = null;
+    removeTempLine();
+    document.getElementById('statusBar').textContent = 'Connection added';
+  }
+}
+
+function addConnection(fromId, toId) {
+  const id = 'line-' + (++lineIdCounter);
+  const svg = document.getElementById('lines-layer');
+
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.classList.add('conn-line');
+  line.setAttribute('stroke', currentLineColor);
+  line.setAttribute('stroke-width', currentLineThickness);
+  line.setAttribute('stroke-linecap', 'round');
+  line.id = id;
+  line.style.pointerEvents = 'stroke';
+  line.style.cursor = 'pointer';
+
+  const hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  hitArea.setAttribute('stroke', 'transparent');
+  hitArea.setAttribute('stroke-width', Math.max(24, currentLineThickness + 20));
+  hitArea.classList.add('conn-line-hit');
+  hitArea.style.pointerEvents = 'stroke';
+  hitArea.style.cursor = 'pointer';
+
+  const removeLine = (ev) => {
+    if (ev.cancelable) ev.preventDefault();
+    const idx = connections.findIndex(c => c.id === id);
+    if (idx !== -1) {
+      connections[idx].el.remove();
+      connections[idx].hitEl.remove();
+      connections.splice(idx, 1);
+    }
+  };
+  line.addEventListener('click', removeLine);
+  hitArea.addEventListener('click', removeLine);
+  hitArea.addEventListener('touchend', removeLine);
+
+  svg.appendChild(hitArea);
+  svg.appendChild(line);
+
+  const conn = { id, fromId, toId, el: line, hitEl: hitArea };
+  connections.push(conn);
+  updateConnectionPos(conn);
+}
+
+function updateConnectionPos(conn) {
+  const fromEl = document.getElementById(conn.fromId);
+  const toEl = document.getElementById(conn.toId);
+  if (!fromEl || !toEl) return;
+  const fc = getCenter(fromEl), tc = getCenter(toEl);
+  [conn.el, conn.hitEl].forEach(l => {
+    l.setAttribute('x1', fc.x); l.setAttribute('y1', fc.y);
+    l.setAttribute('x2', tc.x); l.setAttribute('y2', tc.y);
+  });
+}
+
+function getCenter(el) {
+  return {
+    x: parseFloat(el.style.left) + el.offsetWidth / 2,
+    y: parseFloat(el.style.top) + el.offsetHeight / 2
+  };
+}
+
+function updateConnections() { connections.forEach(c => updateConnectionPos(c)); }
+
+function removeTempLine() {
+  const t = document.getElementById('temp-line');
+  if (t) t.remove();
+}
+
+// ── Labels ──
+function createLabel(x, y) {
+  const id = 'label-' + (++labelIdCounter);
+  const label = document.createElement('div');
+  label.className = 'label';
+  label.id = id;
+  label.style.left = x + 'px';
+  label.style.top = y + 'px';
+  label.style.fontSize = currentLabelSize + 'px';
+
+  const textEl = document.createElement('div');
+  textEl.className = 'label-text';
+  textEl.contentEditable = 'false';
+  textEl.textContent = 'Label';
+
+  // Double-click or double-tap to enter edit mode
+  textEl.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    enterEditMode(textEl);
+  });
+  let lastLabelTap = 0;
+  textEl.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - lastLabelTap < 350) {
+      e.preventDefault();
+      e.stopPropagation();
+      enterEditMode(textEl);
+      lastLabelTap = 0;
+    } else {
+      lastLabelTap = now;
+    }
+  });
+  textEl.addEventListener('mousedown', (e) => {
+    if (textEl.contentEditable === 'true') e.stopPropagation();
+  });
+  textEl.addEventListener('touchstart', (e) => {
+    if (textEl.contentEditable === 'true') e.stopPropagation();
+  }, { passive: true });
+  textEl.addEventListener('blur', () => {
+    textEl.contentEditable = 'false';
+  });
+
+  const del = document.createElement('button');
+  del.className = 'delete-btn';
+  del.innerHTML = '×';
+  const doDelete = (e) => { e.preventDefault(); e.stopPropagation(); label.remove(); };
+  del.addEventListener('click', doDelete);
+  del.addEventListener('touchend', doDelete);
+
+  label.appendChild(textEl);
+  label.appendChild(del);
+
+  const onDown = (e) => {
+    if (e.target.contentEditable === 'true') return;
+    if (e.target.classList.contains('delete-btn')) return;
+    if (e.cancelable) e.preventDefault();
+    exitAllEditModes();
+    document.querySelectorAll('.card.selected, .label.selected').forEach(c => c.classList.remove('selected'));
+    label.classList.add('selected');
+    selectedCard = label;
+    startDrag(label, e);
+  };
+  label.addEventListener('mousedown', onDown);
+  label.addEventListener('touchstart', onDown, { passive: false });
+
+  document.getElementById('canvas').appendChild(label);
+
+  setTimeout(() => {
+    enterEditMode(textEl);
+  }, 50);
+}
+
+// ── Clear ──
+function clearAll() {
+  if (!confirm('Remove everything from the canvas?')) return;
+  document.getElementById('canvas').querySelectorAll('.card, .label').forEach(el => el.remove());
+  document.getElementById('lines-layer').innerHTML = '';
+  connections.length = 0;
+  selectedCard = null;
+  connectSource = null;
+  cardIdCounter = labelIdCounter = lineIdCounter = 0;
+  document.getElementById('statusBar').textContent = 'Canvas cleared';
+}
+
+// ── Save as Image (native Canvas 2D — fully offline) ──
+function saveAsImage() {
+  document.getElementById('statusBar').textContent = 'Generating image…';
+  document.querySelectorAll('.card.selected, .label.selected').forEach(c => c.classList.remove('selected'));
+
+  const domCanvas = document.getElementById('canvas');
+  const cards = domCanvas.querySelectorAll('.card');
+  const labels = domCanvas.querySelectorAll('.label');
+  const allItems = domCanvas.querySelectorAll('.card, .label');
+
+  if (!allItems.length) {
+    document.getElementById('statusBar').textContent = 'Nothing to save';
+    return;
+  }
+
+  // Compute bounding box
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  allItems.forEach(el => {
+    const x = parseFloat(el.style.left), y = parseFloat(el.style.top);
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + el.offsetWidth);
+    maxY = Math.max(maxY, y + el.offsetHeight);
+  });
+  const pad = 60;
+  minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+
+  const scale = 2;
+  const w = (maxX - minX) * scale;
+  const h = (maxY - minY) * scale;
+
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.scale(scale, scale);
+  ctx.translate(-minX, -minY);
+
+  // Background (clean, no dots)
+  ctx.fillStyle = '#f4f1eb';
+  ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+
+  // Draw connection lines
+  connections.forEach(conn => {
+    const fromEl = document.getElementById(conn.fromId);
+    const toEl = document.getElementById(conn.toId);
+    if (!fromEl || !toEl) return;
+    const fc = getCenter(fromEl), tc = getCenter(toEl);
+    ctx.beginPath();
+    ctx.moveTo(fc.x, fc.y);
+    ctx.lineTo(tc.x, tc.y);
+    ctx.strokeStyle = conn.el.getAttribute('stroke') || '#2c2825';
+    ctx.lineWidth = parseFloat(conn.el.getAttribute('stroke-width')) || 1.5;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  });
+
+  // Draw cards
+  cards.forEach(card => {
+    const x = parseFloat(card.style.left);
+    const y = parseFloat(card.style.top);
+    const w = card.offsetWidth;
+    const h = card.offsetHeight;
+    const r = 10;
+    const bg = card.style.background || card.style.backgroundColor || '#ffffff';
+    const borderColor = '#e0dbd5';
+
+    // Rounded rect with shadow
+    ctx.save();
+    ctx.shadowColor = 'rgba(44,40,37,0.08)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 2;
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Border
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+    ctx.stroke();
+
+    // Text
+    const textEl = card.querySelector('.card-text');
+    if (textEl) {
+      const text = textEl.textContent || '';
+      ctx.fillStyle = '#2c2825';
+      ctx.font = '14px -apple-system, "Segoe UI", system-ui, Helvetica, sans-serif';
+      ctx.textBaseline = 'top';
+      wrapText(ctx, text, x + 18, y + 14, w - 36, 20);
+    }
+  });
+
+  // Draw labels
+  labels.forEach(label => {
+    const x = parseFloat(label.style.left);
+    const y = parseFloat(label.style.top);
+    const textEl = label.querySelector('.label-text');
+    if (textEl) {
+      const text = textEl.textContent || '';
+      const fontSize = parseFloat(label.style.fontSize) || 16;
+      ctx.fillStyle = '#8a8480';
+      ctx.font = 'italic ' + fontSize + 'px Georgia, "Times New Roman", serif';
+      ctx.textBaseline = 'top';
+      ctx.fillText(text, x + 8, y + 4);
+    }
+  });
+
+  // Download
+  try {
+    const link = document.createElement('a');
+    link.download = 'mindmap.png';
+    link.href = c.toDataURL('image/png');
+    link.click();
+    document.getElementById('statusBar').textContent = 'Image saved!';
+  } catch (err) {
+    console.error(err);
+    document.getElementById('statusBar').textContent = 'Error saving image';
+  }
+}
+
+// ── Word-wrap helper for canvas text ──
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' ');
+  let line = '';
+  let cy = y;
+  for (let i = 0; i < words.length; i++) {
+    const testLine = line + (line ? ' ' : '') + words[i];
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && line) {
+      ctx.fillText(line, x, cy);
+      line = words[i];
+      cy += lineHeight;
+    } else {
+      line = testLine;
+    }
+  }
+  if (line) ctx.fillText(line, x, cy);
+}
+
+// ── Keyboard ──
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    const ae = document.activeElement;
+    if (ae && (ae.contentEditable === 'true' || ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT')) return;
+    const sel = document.querySelector('.card.selected, .label.selected');
+    if (sel) { sel.classList.contains('card') ? removeCard(sel.id) : sel.remove(); }
+  }
+  if (e.key === 'Escape') {
+    connectSource = null;
+    removeTempLine();
+    document.querySelectorAll('.card.selected, .label.selected').forEach(c => c.classList.remove('selected'));
+    selectedCard = null;
+    updateStatus();
+  }
+});
+
+// ── Splash Screen ──
+function dismissSplash() {
+  document.getElementById('splashOverlay').classList.add('hidden');
+}
+
+// ── Shuffle Cards ──
+function shuffleCards() {
+  stopFloat(); // stop floating if active
+  const area = document.getElementById('canvasArea');
+  const areaRect = area.getBoundingClientRect();
+  const cards = document.getElementById('canvas').querySelectorAll('.card');
+  if (!cards.length) return;
+
+  const margin = 40;
+  const usableW = Math.max(200, areaRect.width - margin * 2);
+  const usableH = Math.max(200, areaRect.height - margin * 2);
+
+  cards.forEach(card => {
+    const x = margin + Math.random() * (usableW - card.offsetWidth);
+    const y = margin + Math.random() * (usableH - card.offsetHeight);
+    card.style.left = x + 'px';
+    card.style.top = y + 'px';
+  });
+  updateConnections();
+  document.getElementById('statusBar').textContent = 'Cards shuffled!';
+}
+
+// ── Float Mode ──
+let floatActive = false;
+let floatAnimId = null;
+let floatVelocities = new Map(); // cardId -> {vx, vy}
+let frozenCards = new Set();
+
+function toggleFloat() {
+  if (floatActive) { stopFloat(); } else { startFloat(); }
+}
+
+function startFloat() {
+  const cards = document.getElementById('canvas').querySelectorAll('.card');
+  if (!cards.length) {
+    document.getElementById('statusBar').textContent = 'Add cards first';
+    return;
+  }
+
+  floatActive = true;
+  frozenCards.clear();
+  floatVelocities.clear();
+
+  // Assign random velocity to each card
+  cards.forEach(card => {
+    card.classList.add('floating');
+    card.classList.remove('frozen');
+    const speed = 0.4 + Math.random() * 0.8;
+    const angle = Math.random() * Math.PI * 2;
+    floatVelocities.set(card.id, {
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed
+    });
+  });
+
+  document.getElementById('floatBanner').classList.add('visible');
+  document.getElementById('floatBtn').style.background = 'var(--accent)';
+  document.getElementById('floatBtn').style.color = '#fff';
+  document.getElementById('floatBtn').style.borderColor = 'var(--accent)';
+  document.getElementById('statusBar').textContent = 'Float mode — tap cards to freeze them in place';
+
+  floatAnimId = requestAnimationFrame(floatTick);
+}
+
+function stopFloat() {
+  if (!floatActive) return;
+  floatActive = false;
+  if (floatAnimId) { cancelAnimationFrame(floatAnimId); floatAnimId = null; }
+
+  floatVelocities.clear();
+  frozenCards.clear();
+
+  const cards = document.getElementById('canvas').querySelectorAll('.card');
+  cards.forEach(card => {
+    card.classList.remove('floating', 'frozen');
+  });
+
+  document.getElementById('floatBanner').classList.remove('visible');
+  document.getElementById('floatBtn').style.background = '';
+  document.getElementById('floatBtn').style.color = '';
+  document.getElementById('floatBtn').style.borderColor = '';
+  document.getElementById('statusBar').textContent = 'Float mode stopped';
+}
+
+function freezeCard(cardId) {
+  if (!floatActive) return;
+  frozenCards.add(cardId);
+  floatVelocities.delete(cardId);
+  const card = document.getElementById(cardId);
+  if (card) {
+    card.classList.add('frozen');
+    card.classList.remove('floating');
+  }
+
+  // Check if all cards are frozen
+  const totalCards = document.getElementById('canvas').querySelectorAll('.card').length;
+  if (frozenCards.size >= totalCards) {
+    stopFloat();
+    document.getElementById('statusBar').textContent = 'All cards frozen — float mode ended';
+  }
+}
+
+function floatTick() {
+  if (!floatActive) return;
+
+  const area = document.getElementById('canvasArea');
+  const areaRect = area.getBoundingClientRect();
+  const boundW = areaRect.width;
+  const boundH = areaRect.height;
+
+  const cards = document.getElementById('canvas').querySelectorAll('.card');
+  cards.forEach(card => {
+    if (frozenCards.has(card.id)) return;
+    const vel = floatVelocities.get(card.id);
+    if (!vel) return;
+
+    let x = parseFloat(card.style.left) + vel.vx;
+    let y = parseFloat(card.style.top) + vel.vy;
+    const w = card.offsetWidth;
+    const h = card.offsetHeight;
+
+    // Bounce off edges
+    if (x < 10) { x = 10; vel.vx = Math.abs(vel.vx); }
+    if (y < 10) { y = 10; vel.vy = Math.abs(vel.vy); }
+    if (x + w > boundW - 10) { x = boundW - w - 10; vel.vx = -Math.abs(vel.vx); }
+    if (y + h > boundH - 10) { y = boundH - h - 10; vel.vy = -Math.abs(vel.vy); }
+
+    // Small random drift for organic movement
+    vel.vx += (Math.random() - 0.5) * 0.02;
+    vel.vy += (Math.random() - 0.5) * 0.02;
+
+    // Clamp speed
+    const maxSpeed = 1.2;
+    const spd = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+    if (spd > maxSpeed) { vel.vx = (vel.vx / spd) * maxSpeed; vel.vy = (vel.vy / spd) * maxSpeed; }
+    if (spd < 0.3) { vel.vx *= 1.1; vel.vy *= 1.1; }
+
+    card.style.left = x + 'px';
+    card.style.top = y + 'px';
+  });
+
+  updateConnections();
+  floatAnimId = requestAnimationFrame(floatTick);
+}
+
+// ── Init ──
+initPalettes();
+updateStatus();
+</script>
+</body>
+</html>
