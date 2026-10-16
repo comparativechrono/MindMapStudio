@@ -1203,6 +1203,7 @@ function undo() {
   applySnapshot(entry.snap);
   renderAll();
   afterChange();
+  updateHistoryButtons();
   notify('Undone: ' + entry.label.toLowerCase());
 }
 
@@ -1217,14 +1218,17 @@ function redo() {
   applySnapshot(entry.snap);
   renderAll();
   afterChange();
+  updateHistoryButtons();
   notify('Redone: ' + entry.label.toLowerCase());
 }
 
+// Every path that changes either stack must call this, or the buttons go stale.
 function updateHistoryButtons() {
   const canUndo = history.undo.length > 0, canRedo = history.redo.length > 0;
   for (const id of ['undoBtn', 'mUndoBtn']) $('#' + id).disabled = !canUndo;
   for (const id of ['redoBtn', 'mRedoBtn']) $('#' + id).disabled = !canRedo;
   $('#undoBtn').title = canUndo ? 'Undo ' + history.undo[history.undo.length - 1].label.toLowerCase() + ' (Ctrl+Z)' : 'Undo (Ctrl+Z)';
+  $('#redoBtn').title = canRedo ? 'Redo ' + history.redo[history.redo.length - 1].label.toLowerCase() + ' (Ctrl+Shift+Z)' : 'Redo (Ctrl+Shift+Z)';
 }
 
 // Called after any change to the map content.
